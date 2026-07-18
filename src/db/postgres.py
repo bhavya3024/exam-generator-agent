@@ -29,6 +29,7 @@ def setup_postgres():
     """Initialize PostgreSQL schema for LangGraph checkpointing."""
     pool = get_connection_pool()
     with pool.connection() as conn:
+        conn.autocommit = True
         checkpointer = PostgresSaver(conn)
         checkpointer.setup()
         print("✅ PostgreSQL checkpointer schema ready")
