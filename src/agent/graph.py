@@ -31,12 +31,17 @@ from src.config import settings
 
 def get_llm(temperature: float = 0.7) -> ChatOpenAI:
     """Get the configured LLM instance."""
-    return ChatOpenAI(
-        model=settings.model_name,
-        api_key=settings.openai_api_key,
-        temperature=temperature,
-        max_tokens=16000,
-    )
+    model_kwargs = {
+        "model": settings.model_name,
+        "api_key": settings.openai_api_key,
+    }
+    
+    # Reasoning models (o1, o3) do not support temperature or standard max_tokens
+    if not (settings.model_name.startswith("o1") or settings.model_name.startswith("o3")):
+        model_kwargs["temperature"] = temperature
+        model_kwargs["max_tokens"] = 16000
+
+    return ChatOpenAI(**model_kwargs)
 
 
 def get_embeddings() -> OpenAIEmbeddings:
