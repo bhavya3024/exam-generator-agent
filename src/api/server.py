@@ -45,6 +45,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from src.api.library import router as library_router
+app.include_router(library_router, prefix="/library", tags=["library"])
+
 # In-memory store for active run streams
 _active_runs: dict[str, list[dict]] = {}
 

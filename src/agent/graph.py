@@ -143,35 +143,8 @@ async def ingest_documents(state: AgentState) -> dict:
                 print(f"Warning: Failed to load document {url}: {e}")
                 continue
 
-    # --- Neo4j GraphRAG Ingestion ---
-    try:
-        from src.db.neo4j import get_neo4j_graph
-        graph = get_neo4j_graph()
-        if graph and all_chunks:
-            # We process a small subset of chunks (first 3) to prevent huge LLM costs/timeouts 
-            # during demonstration, but normally we'd process all syllabus chunks.
-            from langchain_experimental.graph_transformers import LLMGraphTransformer
-            from langchain_core.documents import Document
-            
-            run_id = state.get("run_id")
-            if run_id:
-                from src.db.mongo import update_paper_progress
-                await asyncio.to_thread(update_paper_progress, run_id, 32, "Building Knowledge Graph (GraphRAG) relationships via Neo4j...")
-                
-            llm = get_llm(temperature=0.1)
-            llm_transformer = LLMGraphTransformer(llm=llm)
-            
-            # Convert raw string chunks to LangChain Document objects
-            docs = [Document(page_content=c) for c in all_chunks[:3]]
-            
-            # Extract graph documents
-            graph_docs = await asyncio.to_thread(llm_transformer.convert_to_graph_documents, docs)
-            
-            # Add to Neo4j
-            await asyncio.to_thread(graph.add_graph_documents, graph_docs)
-            print("Successfully extracted and inserted graph nodes/relationships into Neo4j")
-    except Exception as e:
-        print(f"Warning: Neo4j Graph Extraction failed: {e}")
+    # Note: Neo4j GraphRAG ingestion now happens asynchronously via the Library API, 
+    # not during paper generation, to save time and display the graph explicitly.
 
     return {
         "document_chunks": all_chunks,
