@@ -172,6 +172,80 @@ async def generate(req: GenerateRequest, background_tasks: BackgroundTasks):
             detail=f"Difficulty percentages must sum to 100 (got {total_pct})"
         )
 
+    # Automatically calculate blueprint (question counts) based on Target Total Marks
+    target = req.total_marks
+    
+    # CBSE standard section weights (proportion of total marks)
+    sectionAMarks = round(target * 0.25)      # 1-mark questions (MCQs & AR)
+    sectionBMarks = round(target * 0.15)      # 2-mark questions (VSA & SA-I)
+    sectionCMarks = round(target * 0.26)      # 3-mark questions (SA-II)
+    sectionDMarks = round(target * 0.19)      # 5-mark questions (LA)
+    sectionEMarks = target - sectionAMarks - sectionBMarks - sectionCMarks - sectionDMarks # 4-mark questions (Case-based)
+    
+    # Section A: split into MCQs (80%) and Assertion-Reason (20%)
+    mcq = round(sectionAMarks * 0.8)
+    ar = sectionAMarks - mcq
+    
+    # Section B: 2-mark questions
+    vsa = sectionBMarks // 2
+    
+    # Section C: 3-mark questions
+    saII = sectionCMarks // 3
+    
+    # Section D: 5-mark questions
+    la = sectionDMarks // 5
+    
+    # Section E: 4-mark questions
+    cb = sectionEMarks // 4
+
+    currentTotal = mcq * 1 + ar * 1 + vsa * 2 + saII * 3 + la * 5 + cb * 4
+    iterations = 0
+    while currentTotal != target and iterations < 100:
+        iterations += 1
+        diff = target - currentTotal
+        if diff > 0:
+            if diff >= 5:
+                la += 1
+                currentTotal += 5
+            elif diff >= 4:
+                cb += 1
+                currentTotal += 4
+            elif diff >= 3:
+                saII += 1
+                currentTotal += 3
+            elif diff >= 2:
+                vsa += 1
+                currentTotal += 2
+            else:
+                mcq += 1
+                currentTotal += 1
+        else:
+            if diff <= -5 and la > 0:
+                la -= 1
+                currentTotal -= 5
+            elif diff <= -4 and cb > 0:
+                cb -= 1
+                currentTotal -= 4
+            elif diff <= -3 and saII > 0:
+                saII -= 1
+                currentTotal -= 3
+            elif diff <= -2 and vsa > 0:
+                vsa -= 1
+                currentTotal -= 2
+            elif mcq > 0:
+                mcq -= 1
+                currentTotal -= 1
+            else:
+                break
+
+    req.mcq_count = max(0, mcq)
+    req.assertion_reason_count = max(0, ar)
+    req.very_short_answer_count = max(0, vsa)
+    req.short_answer_count = 0
+    req.short_answer_ii_count = max(0, saII)
+    req.long_answer_count = max(0, la)
+    req.case_based_count = max(0, cb)
+
     run_id = str(uuid.uuid4())
     exam_config = req.model_dump()
 
