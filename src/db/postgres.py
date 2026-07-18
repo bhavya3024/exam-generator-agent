@@ -1,20 +1,19 @@
 """PostgreSQL connection for LangGraph checkpointing."""
-import psycopg2
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg_pool import ConnectionPool
 from langgraph.checkpoint.postgres import PostgresSaver
 from src.config import settings
 
-_pool: ThreadedConnectionPool | None = None
+_pool: ConnectionPool | None = None
 
 
-def get_connection_pool() -> ThreadedConnectionPool:
+def get_connection_pool() -> ConnectionPool:
     """Get or create a thread-safe PostgreSQL connection pool."""
     global _pool
     if _pool is None:
-        _pool = ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,
-            dsn=settings.postgres_url,
+        _pool = ConnectionPool(
+            conninfo=settings.postgres_url,
+            min_size=1,
+            max_size=10,
         )
     return _pool
 
@@ -22,26 +21,22 @@ def get_connection_pool() -> ThreadedConnectionPool:
 def get_checkpointer() -> PostgresSaver:
     """Create a LangGraph PostgresSaver checkpointer."""
     pool = get_connection_pool()
-    conn = pool.getconn()
-    checkpointer = PostgresSaver(conn)
+    checkpointer = PostgresSaver(pool)
     return checkpointer
 
 
 def setup_postgres():
     """Initialize PostgreSQL schema for LangGraph checkpointing."""
     pool = get_connection_pool()
-    conn = pool.getconn()
-    try:
+    with pool.connection() as conn:
         checkpointer = PostgresSaver(conn)
         checkpointer.setup()
         print("✅ PostgreSQL checkpointer schema ready")
-    finally:
-        pool.putconn(conn)
 
 
 def close_pool():
     """Close the connection pool."""
     global _pool
     if _pool:
-        _pool.closeall()
+        _pool.close()
         _pool = None
