@@ -24,15 +24,16 @@ QUESTION TYPES (CBSE pattern):
 - "mcq": Multiple Choice Question (1 mark each)
 - "assertion_reason": Assertion-Reason MCQ (1 mark each) — format: Assertion (A): ... Reason (R): ...
 - "very_short_answer": Very Short Answer — 1-2 sentences (1-2 marks)
-- "short_answer": Short Answer (SA-I / SA-II) — (2-3 marks)
+- "short_answer_i": Short Answer (SA-I) — (2 marks)
+- "short_answer_ii": Short Answer (SA-II) — (3 marks)
 - "long_answer": Long Answer (LA) — detailed, structured (5 marks)
 - "case_based": Case/Passage/Source-based questions with sub-parts (4 marks)
 
 OUTPUT FORMAT: Return a valid JSON array of question objects. Each object must have:
 - question_id: unique string (e.g., "q1", "q2")
-- question_type: "mcq" | "assertion_reason" | "very_short_answer" | "short_answer" | "long_answer" | "case_based"
+- question_type: "mcq" | "assertion_reason" | "very_short_answer" | "short_answer_i" | "short_answer_ii" | "long_answer" | "case_based"
 - question_text: the question (for case_based, include the passage/case and sub-questions)
-- marks: integer (1, 2, 3, 4, or 5)
+- marks: integer (1, 2, 3, 4, or 5). MUST exactly match the question type's marks.
 - difficulty: "easy" | "medium" | "hard"
 - options: list of 4 strings for MCQ/assertion_reason (null for others)
 - correct_answer: string for MCQ/assertion_reason (null for others)
