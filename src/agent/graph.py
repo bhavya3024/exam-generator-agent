@@ -114,7 +114,13 @@ async def ingest_documents(state: AgentState) -> dict:
                     from src.db.mongo import update_paper_progress
                     await asyncio.to_thread(update_paper_progress, run_id, current_progress, msg)
                 
-                response = await client.get(url)
+                headers = {}
+                if "blob.vercel-storage.com" in url:
+                    from src.config import settings
+                    if settings.blob_read_write_token:
+                        headers["Authorization"] = f"Bearer {settings.blob_read_write_token}"
+
+                response = await client.get(url, headers=headers)
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
 
