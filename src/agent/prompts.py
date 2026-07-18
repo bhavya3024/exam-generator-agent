@@ -153,6 +153,7 @@ def build_generation_prompt(config: dict, context: str) -> str:
     cbse_class = config.get('cbse_class', config.get('grade_level', '10'))
     class_label = CBSE_CLASSES.get(str(cbse_class), f"Class {cbse_class}")
     topic_label = config.get('topic') or "Entire Syllabus / Comprehensive"
+    total_2_mark = int(config.get('very_short_answer_count', 0)) + int(config.get('short_answer_count', 0))
     
     return f"""
 CBSE EXAM CONFIGURATION:
@@ -167,7 +168,7 @@ CBSE EXAM CONFIGURATION:
 QUESTION DISTRIBUTION (CBSE Blueprint Pattern):
 - MCQ (1 mark each): {config.get('mcq_count', 0)} questions
 - Assertion-Reason (1 mark each): {config.get('assertion_reason_count', 0)} questions
-- Very Short / Short Answer-I (2 marks each): {config.get('short_answer_count', 0)} questions
+- Very Short / Short Answer-I (2 marks each): {total_2_mark} questions
 - Short Answer-II (3 marks each): {config.get('short_answer_ii_count', 0)} questions
 - Long Answer (5 marks each): {config.get('long_answer_count', 0)} questions
 - Case/Source Based (4 marks each): {config.get('case_based_count', 0)} questions
