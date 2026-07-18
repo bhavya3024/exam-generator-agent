@@ -220,7 +220,7 @@ async def generate_questions(state: AgentState) -> dict:
             update_paper_progress,
             run_id,
             55,
-            "Synthesizing CBSE questions (using gpt-4o model)...",
+            f"Synthesizing CBSE questions (using {settings.model_name} model)...",
             "generating"
         )
     llm = get_llm(temperature=0.8)
