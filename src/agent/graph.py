@@ -143,6 +143,36 @@ async def ingest_documents(state: AgentState) -> dict:
                 print(f"Warning: Failed to load document {url}: {e}")
                 continue
 
+    # --- Neo4j GraphRAG Ingestion ---
+    try:
+        from src.db.neo4j import get_neo4j_graph
+        graph = get_neo4j_graph()
+        if graph and all_chunks:
+            # We process a small subset of chunks (first 3) to prevent huge LLM costs/timeouts 
+            # during demonstration, but normally we'd process all syllabus chunks.
+            from langchain_experimental.graph_transformers import LLMGraphTransformer
+            from langchain_core.documents import Document
+            
+            run_id = state.get("run_id")
+            if run_id:
+                from src.db.mongo import update_paper_progress
+                await asyncio.to_thread(update_paper_progress, run_id, 32, "Building Knowledge Graph (GraphRAG) relationships via Neo4j...")
+                
+            llm = get_llm(temperature=0.1)
+            llm_transformer = LLMGraphTransformer(llm=llm)
+            
+            # Convert raw string chunks to LangChain Document objects
+            docs = [Document(page_content=c) for c in all_chunks[:3]]
+            
+            # Extract graph documents
+            graph_docs = await asyncio.to_thread(llm_transformer.convert_to_graph_documents, docs)
+            
+            # Add to Neo4j
+            await asyncio.to_thread(graph.add_graph_documents, graph_docs)
+            print("Successfully extracted and inserted graph nodes/relationships into Neo4j")
+    except Exception as e:
+        print(f"Warning: Neo4j Graph Extraction failed: {e}")
+
     return {
         "document_chunks": all_chunks,
         "status": "retrieving",
@@ -177,9 +207,41 @@ async def retrieve_context(state: AgentState) -> dict:
         }
 
     cbse_class = config.get('cbse_class', '10')
-    query = f"CBSE Class {cbse_class} {config['subject']} {config['topic']} NCERT question syllabus board exam"
+    subject = config.get('subject', '')
+    topic = config.get('topic', '')
+    query = f"CBSE Class {cbse_class} {subject} {topic} NCERT question syllabus board exam rules formats"
 
+    context_parts = []
+
+    # 1. Neo4j Graph Retrieval
     try:
+        from src.db.neo4j import get_neo4j_graph
+        graph = get_neo4j_graph()
+        if graph:
+            from langchain.chains import GraphCypherQAChain
+            if run_id:
+                await asyncio.to_thread(update_paper_progress, run_id, 45, "Querying Neo4j Knowledge Graph for syllabus relationships...")
+            
+            llm = get_llm(temperature=0)
+            chain = GraphCypherQAChain.from_llm(
+                graph=graph, 
+                llm=llm, 
+                verbose=True,
+                allow_dangerous_requests=True
+            )
+            # Ask the graph about the rules for this subject/topic
+            graph_query = f"What are the specific guidelines, formats, and relationships for {subject} and {topic}?"
+            graph_res = await asyncio.to_thread(chain.invoke, {"query": graph_query})
+            if graph_res and graph_res.get("result"):
+                context_parts.append(f"KNOWLEDGE GRAPH RULES:\n{graph_res['result']}\n")
+    except Exception as e:
+        print(f"Warning: Neo4j Graph Retrieval failed: {e}")
+
+    # 2. Chroma Vector Retrieval
+    try:
+        if run_id:
+            await asyncio.to_thread(update_paper_progress, run_id, 50, "Performing Semantic Vector Search via ChromaDB...")
+            
         embeddings = get_embeddings()
         # Use in-memory Chroma (no persistence needed per run)
         vectorstore = await asyncio.to_thread(
@@ -190,19 +252,22 @@ async def retrieve_context(state: AgentState) -> dict:
         )
         retriever = vectorstore.as_retriever(search_kwargs={"k": 8})
         relevant_docs = await asyncio.to_thread(retriever.invoke, query)
-        context = "\n\n---\n\n".join([d.page_content for d in relevant_docs])
+        vector_context = "\n\n---\n\n".join([d.page_content for d in relevant_docs])
+        context_parts.append(f"VECTOR SEARCH CONTEXT:\n{vector_context}")
 
         # Cleanup
         await asyncio.to_thread(vectorstore.delete_collection)
 
     except Exception as e:
         print(f"Warning: Vector retrieval failed ({e}), using raw chunks")
-        context = "\n\n".join(chunks[:8])  # Fallback: first 8 chunks
+        context_parts.append("\n\n".join(chunks[:8]))  # Fallback: first 8 chunks
+
+    final_context = "\n\n".join(context_parts)[:9000]
 
     return {
-        "retrieved_context": context[:8000],  # Limit context size
+        "retrieved_context": final_context,
         "status": "generating",
-        "progress": 40,
+        "progress": 52,
     }
 
 
