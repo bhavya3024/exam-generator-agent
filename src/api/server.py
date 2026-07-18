@@ -256,7 +256,7 @@ async def startup():
     print("🚀 Exam Generator Agent starting up...")
     try:
         from src.db.postgres import setup_postgres
-        setup_postgres()
+        await setup_postgres()
     except Exception as e:
         print(f"⚠️  PostgreSQL setup skipped: {e}")
 
@@ -265,6 +265,6 @@ async def startup():
 async def shutdown():
     try:
         from src.db.postgres import close_pool
-        close_pool()
+        await close_pool()
     except Exception:
         pass
