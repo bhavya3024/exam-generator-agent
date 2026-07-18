@@ -155,17 +155,39 @@ def build_generation_prompt(config: dict, context: str) -> str:
     class_label = CBSE_CLASSES.get(str(cbse_class), f"Class {cbse_class}")
     topic_label = config.get('topic') or "Entire Syllabus / Comprehensive"
     total_2_mark = int(config.get('very_short_answer_count', 0)) + int(config.get('short_answer_count', 0))
+    subject = config.get('subject', '')
     
+    subject_lower = subject.lower()
+    is_language = "english" in subject_lower or "hindi" in subject_lower
+
+    language_blueprint_instructions = ""
+    if is_language:
+        language_blueprint_instructions = """
+SPECIAL BLUEPRINT INSTRUCTIONS (For English and Hindi):
+Language papers must contain three distinct sections. Follow this structure strictly:
+1. Section A: Reading Skills (approx. 25-30% of total marks):
+   - You MUST generate 1 or 2 complete unseen reading comprehension passages (each 300-500 words).
+   - Generate a mix of MCQ (1-mark) and short inference questions (2-marks) testing reading skills, vocabulary, and deduction. Tag these with "topic_tag": "Reading Skills - Comprehension".
+2. Section B: Creative Writing Skills (approx. 20-25% of total marks):
+   - Include Short writing tasks: Notice Writing (4 marks) or Formal/Informal Invitation & Reply (4 marks).
+   - Include Long writing tasks: Letter writing (5 marks) or Article/Report writing (5 marks).
+   - Tag these questions with "topic_tag": "Creative Writing Skills - [Task Name]".
+3. Section C: Literature Textbooks (approx. 45-50% of total marks):
+   - Generate Poetry/Prose extracts followed by 1-mark MCQs (e.g. 6 marks Flamingo poetry extract).
+   - Generate Short Answer questions (2 marks each, e.g. "Flamingo Prose short answer") and Long Answer questions (5 marks each) testing character sketches, themes, and values from Vistas/Flamingo (English) or Aroh/Vitan (Hindi) NCERT books.
+   - Tag these with "topic_tag": "Literature Textbooks - [Chapter Name]".
+"""
+
     return f"""
 CBSE EXAM CONFIGURATION:
 - Board: Central Board of Secondary Education (CBSE)
 - Class: {class_label}
-- Subject: {config['subject']}
+- Subject: {subject}
 - Chapter/Topic: {topic_label}
 - Total Marks: {config['total_marks']}
 - Duration: {config['duration_minutes']} minutes
 - Academic Session: 2025-26
-
+{language_blueprint_instructions}
 QUESTION DISTRIBUTION (CBSE Blueprint Pattern):
 - MCQ (1 mark each): {config.get('mcq_count', 0)} questions
 - Assertion-Reason (1 mark each): {config.get('assertion_reason_count', 0)} questions

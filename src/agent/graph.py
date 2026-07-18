@@ -416,10 +416,37 @@ async def format_paper(state: AgentState) -> dict:
             "formatting"
         )
 
+    subject = config.get("subject", "")
     # Build sections locally matching CBSE blueprints
-    sections = _build_sections(questions)
+    sections = _build_sections(questions, subject)
     total_marks = sum(q.get("marks", 0) for q in questions)
     cbse_class = config.get("cbse_class", "10")
+
+    subject_lower = subject.lower()
+    is_language = "english" in subject_lower or "hindi" in subject_lower
+
+    if is_language:
+        general_instructions = [
+            "All questions are compulsory.",
+            "This question paper contains three sections: Section A (Reading Skills), Section B (Creative Writing Skills), and Section C (Literature Textbooks & Supplementary Reading).",
+            "Section A: Reading Skills — tests comprehension through unseen passages (MCQs & Short Answer questions).",
+            "Section B: Creative Writing Skills — tests short formats (Notice/Invitation) and long formats (Letter/Article).",
+            "Section C: Literature Textbooks — tests extracts and questions from Flamingo/Vistas or Aroh/Vitan textbooks.",
+            "Answers must be written in the specified language and adhere to specified word limits.",
+            "Internal choices are provided in writing tasks and literature questions."
+        ]
+    else:
+        general_instructions = [
+            "All questions are compulsory.",
+            "This question paper contains five sections: Section A, B, C, D, and E.",
+            "Section A comprises MCQs and Assertion-Reason questions of 1 mark each.",
+            "Section B comprises Very Short / Short Answer-I type questions of 2 marks each.",
+            "Section C comprises Short Answer-II type questions of 3 marks each.",
+            "Section D comprises Long Answer type questions of 5 marks each.",
+            "Section E comprises Case-Based competency questions of 4 marks each.",
+            "There is no overall choice. However, internal choices may be provided.",
+            "Use of calculators is not permitted."
+        ]
 
     paper: ExamPaper = {
         "paper_id": state["run_id"],
@@ -432,17 +459,7 @@ async def format_paper(state: AgentState) -> dict:
         "sections": sections,
         "questions": questions,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "general_instructions": [
-            "All questions are compulsory.",
-            "This question paper contains five sections: Section A, B, C, D, and E.",
-            "Section A comprises MCQs and Assertion-Reason questions of 1 mark each.",
-            "Section B comprises Very Short / Short Answer-I type questions of 2 marks each.",
-            "Section C comprises Short Answer-II type questions of 3 marks each.",
-            "Section D comprises Long Answer type questions of 5 marks each.",
-            "Section E comprises Case-Based competency questions of 4 marks each.",
-            "There is no overall choice. However, internal choices may be provided.",
-            "Use of calculators is not permitted."
-        ]
+        "general_instructions": general_instructions
     }
 
     return {
@@ -452,9 +469,63 @@ async def format_paper(state: AgentState) -> dict:
     }
 
 
-def _build_sections(questions: list[dict]) -> list[dict]:
-    """Organize questions into standard CBSE Sections A-E."""
-    # CBSE standard patterns:
+def _build_sections(questions: list[dict], subject: str = "") -> list[dict]:
+    """Organize questions into standard CBSE Sections."""
+    subject_lower = subject.lower()
+    is_language = "english" in subject_lower or "hindi" in subject_lower
+
+    if is_language:
+        # Categorize by topic_tag keywords or question content
+        reading_qs = []
+        writing_qs = []
+        literature_qs = []
+
+        for q in questions:
+            tag = str(q.get("topic_tag", "")).lower()
+            text = str(q.get("question_text", "")).lower()
+            q_type = str(q.get("question_type", "")).lower()
+
+            # Keyword-based routing
+            if any(k in tag or k in text for k in ("reading", "comprehension", "passage", "unseen")):
+                reading_qs.append(q)
+            elif any(k in tag or k in text for k in ("writing", "notice", "letter", "article", "report", "invitation", "reply")):
+                writing_qs.append(q)
+            elif any(k in tag or k in text for k in ("literature", "flamingo", "vistas", "aroh", "vitan", "extract", "poem", "poetry", "prose")):
+                literature_qs.append(q)
+            else:
+                # Fallback: route based on type
+                if q_type == "case_based":
+                    reading_qs.append(q)
+                elif q_type == "long_answer":
+                    writing_qs.append(q)
+                else:
+                    literature_qs.append(q)
+
+        sections = []
+        if reading_qs:
+            sections.append({
+                "name": "Section A — Reading Skills",
+                "description": "This section comprises Reading Comprehension passages and related questions (MCQs & Short Answer questions).",
+                "total_marks": sum(q.get("marks", 1) for q in reading_qs),
+                "question_ids": [q["question_id"] for q in reading_qs],
+            })
+        if writing_qs:
+            sections.append({
+                "name": "Section B — Creative Writing Skills",
+                "description": "This section tests creative writing skills including Short Writing Tasks (Notice/Invitation) and Long Writing Tasks (Letter/Article/Report).",
+                "total_marks": sum(q.get("marks", 2) for q in writing_qs),
+                "question_ids": [q["question_id"] for q in writing_qs],
+            })
+        if literature_qs:
+            sections.append({
+                "name": "Section C — Literature Textbooks & Supplementary Reading",
+                "description": "This section comprises Poetry/Prose extract-based questions and short/long answer questions based on Flamingo/Vistas or Aroh/Vitan NCERT textbooks.",
+                "total_marks": sum(q.get("marks", 3) for q in literature_qs),
+                "question_ids": [q["question_id"] for q in literature_qs],
+            })
+        return sections
+
+    # CBSE standard patterns for Science/Math:
     # Section A: MCQ + Assertion-Reason (1 mark each)
     section_a_qs = [q for q in questions if q.get("question_type") in ("mcq", "assertion_reason") or q.get("marks") == 1]
     
