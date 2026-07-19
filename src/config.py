@@ -4,9 +4,10 @@ from pydantic import Field
 
 
 class Settings(BaseSettings):
-    # AI Model (Google Gemini)
-    google_api_key: str = Field(..., env="GOOGLE_API_KEY")
-    model_name: str = Field(default="gemini-1.5-pro", env="MODEL_NAME")
+    # AI Model
+    openai_api_key: str = Field(..., env="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="", env="OPENAI_BASE_URL")
+    model_name: str = Field(default="gpt-4o", env="MODEL_NAME")
 
     # PostgreSQL (LangGraph checkpointer)
     postgres_url: str = Field(

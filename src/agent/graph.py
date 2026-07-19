@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
 
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
@@ -31,27 +31,35 @@ from src.agent.prompts import (
 from src.config import settings
 
 
-def get_llm(temperature: float = 0.7) -> ChatGoogleGenerativeAI:
+def get_llm(temperature: float = 0.7) -> ChatOpenAI:
     """Get the configured LLM instance."""
     model_kwargs = {
         "model": settings.model_name,
-        "google_api_key": settings.google_api_key,
-        "temperature": temperature,
+        "api_key": settings.openai_api_key,
     }
+    if settings.openai_base_url:
+        model_kwargs["base_url"] = settings.openai_base_url
     
-    # Reasoning models (like gemini-1.5-pro) might handle max_tokens differently, but we can set it
-    model_kwargs["max_output_tokens"] = 8192
+    # Reasoning models (o1, o3) do not support temperature or standard max_tokens
+    if not (settings.model_name.startswith("o1") or settings.model_name.startswith("o3")):
+        model_kwargs["temperature"] = temperature
+        model_kwargs["max_tokens"] = 16000
 
-    return ChatGoogleGenerativeAI(**model_kwargs)
+    return ChatOpenAI(**model_kwargs)
 
 
-def get_embeddings() -> GoogleGenerativeAIEmbeddings:
+def get_embeddings() -> OpenAIEmbeddings:
     kwargs = {
-        "model": "models/text-embedding-004",
-        "google_api_key": settings.google_api_key,
+        "model": "text-embedding-3-small",
+        "api_key": settings.openai_api_key,
+        "max_retries": 0, # Prevent long exponential backoff hangs if provider doesn't support embeddings
     }
+    if settings.openai_base_url:
+        kwargs["base_url"] = settings.openai_base_url
+        # Some providers like NIM require a specific embedding model
+        # The user can pass MODEL_NAME for chat, but for embeddings we'll rely on the default or let it fail if the provider doesn't support 'text-embedding-3-small'
         
-    return GoogleGenerativeAIEmbeddings(**kwargs)
+    return OpenAIEmbeddings(**kwargs)
 
 
 # ─────────────────────────────────────────────────────────────
