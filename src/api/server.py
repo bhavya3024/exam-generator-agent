@@ -293,7 +293,7 @@ async def stream(run_id: str):
 
         yield {"event": "error", "data": json.dumps({"message": "Timeout waiting for agent"})}
 
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(event_generator(), ping=15)
 
 
 @app.get("/paper/{run_id}")
