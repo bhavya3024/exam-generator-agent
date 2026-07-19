@@ -7,7 +7,6 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.agent.graph import get_llm
-from src.db.neo4j import get_neo4j_graph
 from src.config import settings
 
 router = APIRouter()
@@ -18,10 +17,6 @@ class ExtractRequest(BaseModel):
 @router.post("/extract")
 async def extract_knowledge_graph(req: ExtractRequest):
     """Extract Knowledge Graph nodes and relationships from a reference PDF URL."""
-    graph = get_neo4j_graph()
-    if not graph:
-        raise HTTPException(status_code=500, detail="Neo4j Knowledge Graph is not configured.")
-
     # 1. Fetch PDF Content
     # We will use PyMuPDF or similar via the existing agent logic.
     # To avoid repeating parsing logic, we'll fetch and chunk it simply here.
@@ -67,8 +62,7 @@ async def extract_knowledge_graph(req: ExtractRequest):
         # Extract graph documents
         graph_docs = await asyncio.to_thread(llm_transformer.convert_to_graph_documents, docs)
         
-        # Add to Neo4j
-        await asyncio.to_thread(graph.add_graph_documents, graph_docs)
+        # Add to Neo4j removed
         
         # Format the result to send back to the frontend
         extracted_nodes = []
