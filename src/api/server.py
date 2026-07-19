@@ -119,39 +119,45 @@ async def run_agent(run_id: str, exam_config: dict):
         config = {"configurable": {"thread_id": run_id}}
 
         # Stream node-by-node updates
-        async for chunk in graph.astream(initial_state, config=config):
-            node_name = list(chunk.keys())[0]
-            node_state = chunk[node_name]
+        try:
+            async for chunk in graph.astream(initial_state, config=config):
+                node_name = list(chunk.keys())[0]
+                node_state = chunk[node_name]
 
-            status = node_state.get("status", "processing")
-            progress = node_state.get("progress", 0)
+                status = node_state.get("status", "processing")
+                progress = node_state.get("progress", 0)
 
-            node_messages = {
-                "ingest_documents": "📂 Ingesting and chunking documents...",
-                "retrieve_context": "🔍 Retrieving relevant NCERT context...",
-                "generate_questions": "🧠 Generating CBSE questions with AI...",
-                "validate_questions": "✅ Vetting CBSE criteria compliance...",
-                "format_paper": "📝 Formatting standard CBSE sections...",
-            }
-            message = node_messages.get(node_name, f"Processing {node_name}...")
+                node_messages = {
+                    "ingest_documents": "📂 Ingesting and chunking documents...",
+                    "retrieve_context": "🔍 Retrieving relevant NCERT context...",
+                    "generate_questions": "🧠 Generating CBSE questions with AI...",
+                    "validate_questions": "✅ Vetting CBSE criteria compliance...",
+                    "format_paper": "📝 Formatting standard CBSE sections...",
+                }
+                message = node_messages.get(node_name, f"Processing {node_name}...")
 
-            emit("status", {"status": status, "progress": progress, "message": message, "node": node_name})
+                emit("status", {"status": status, "progress": progress, "message": message, "node": node_name})
 
-            # Check if done
-            if node_name == "format_paper" and node_state.get("exam_paper"):
-                paper = node_state["exam_paper"]
-                save_paper(run_id, paper, exam_config)
-                emit("complete", {"run_id": run_id, "paper": paper})
-                return
+                # Check if done
+                if node_name == "format_paper" and node_state.get("exam_paper"):
+                    paper = node_state["exam_paper"]
+                    save_paper(run_id, paper, exam_config)
+                    emit("complete", {"run_id": run_id, "paper": paper})
+                    return
 
-        # If stream ended without paper
-        emit("error", {"message": "Agent completed but no paper was generated"})
-        update_paper_status(run_id, "error", "No paper generated")
+            # If stream ended without paper
+            emit("agent_error", {"message": "Agent completed but no paper was generated"})
+            update_paper_status(run_id, "error", "No paper generated")
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Error in agent run {run_id}: {error_msg}")
+            emit("agent_error", {"message": f"Generation failed: {error_msg}"})
+            update_paper_status(run_id, "error", error_msg)
 
     except Exception as e:
         error_msg = str(e)
-        emit("error", {"message": error_msg})
-        update_paper_status(run_id, "error", error_msg)
+        print(f"Error in agent run {run_id}: {error_msg}")
+        emit("agent_error", {"message": f"Setup failed: {error_msg}"})
         raise
 
 
@@ -282,7 +288,7 @@ async def stream(run_id: str):
                 sent_count += 1
 
                 # Stop streaming on terminal events
-                if event["type"] in ("complete", "error"):
+                if event["type"] in ("complete", "agent_error"):
                     # Cleanup after short delay
                     await asyncio.sleep(5)
                     _active_runs.pop(run_id, None)
