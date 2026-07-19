@@ -35,6 +35,8 @@ def get_llm(temperature: float = 0.7) -> ChatOpenAI:
         "model": settings.model_name,
         "api_key": settings.openai_api_key,
     }
+    if settings.openai_base_url:
+        model_kwargs["base_url"] = settings.openai_base_url
     
     # Reasoning models (o1, o3) do not support temperature or standard max_tokens
     if not (settings.model_name.startswith("o1") or settings.model_name.startswith("o3")):
@@ -45,10 +47,16 @@ def get_llm(temperature: float = 0.7) -> ChatOpenAI:
 
 
 def get_embeddings() -> OpenAIEmbeddings:
-    return OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        api_key=settings.openai_api_key,
-    )
+    kwargs = {
+        "model": "text-embedding-3-small",
+        "api_key": settings.openai_api_key,
+    }
+    if settings.openai_base_url:
+        kwargs["base_url"] = settings.openai_base_url
+        # Some providers like NIM require a specific embedding model
+        # The user can pass MODEL_NAME for chat, but for embeddings we'll rely on the default or let it fail if the provider doesn't support 'text-embedding-3-small'
+        
+    return OpenAIEmbeddings(**kwargs)
 
 
 # ─────────────────────────────────────────────────────────────
