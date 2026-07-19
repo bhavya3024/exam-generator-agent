@@ -45,7 +45,7 @@ graph TD
     subgraph AI_Agent_Workflow [AI Agent Workflow]
         Backend --> Agent[LangGraph Orchestrator]
         Agent -->|RAG| Chroma[(ChromaDB Vector Store)]
-        Agent -->|Inference| LLM[OpenAI GPT-4o]
+        Agent -->|Inference| LLM[OpenAI gpt-5.6-terra]
         
         Agent --> N1[Retrieve Context]
         N1 --> N2[Draft Questions]

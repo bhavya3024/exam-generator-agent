@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # AI Model
     openai_api_key: str = Field(..., env="OPENAI_API_KEY")
     openai_base_url: str = Field(default="", env="OPENAI_BASE_URL")
-    model_name: str = Field(default="gpt-4o", env="MODEL_NAME")
+    model_name: str = Field(default="gpt-5.6-terra", env="MODEL_NAME")
 
     # PostgreSQL (LangGraph checkpointer)
     postgres_url: str = Field(
