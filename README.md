@@ -1,79 +1,119 @@
-# Exam Generator Agent
+<div align="center">
+  <img src="https://img.icons8.com/?size=100&id=114324&format=png" alt="ExamForge Logo" width="100"/>
+  <h1>ExamForge: AI-Powered Exam Generator</h1>
+  <p><strong>Automating standard-compliant question paper generation using LangGraph & LLMs</strong></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white" />
+    <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" />
+    <img src="https://img.shields.io/badge/LangGraph-FF4F00?style=for-the-badge&logo=langchain&logoColor=white" />
+    <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" />
+    <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
+    <img src="https://img.shields.io/badge/ChromaDB-FF9900?style=for-the-badge" />
+  </p>
+</div>
 
-AI-powered exam question generator using **LangGraph** + **Google Gemini 1.5 Pro**.
+---
 
-## Architecture
+## 📌 Project Description
 
+Crafting quality question papers that strictly follow official **CBSE blueprints** (Marks distribution, difficulty levels, and topologies like MCQs, Case-based, and Long Answers) is an incredibly time-consuming process for educators. Generic AI tools fall short because they hallucinate or fail to adhere to rigid syllabus constraints.
+
+**ExamForge** is a full-stack AI agentic application acting as a Subject Matter Expert. By ingesting official NCERT textbooks, it ensures absolute syllabus accuracy. Under the hood, it orchestrates a panel of AI agents using **LangGraph** to draft, stringently vet, and format exam papers exactly to standard.
+
+## ✨ Key Features
+
+- 📚 **Context-Aware (RAG):** Ingests official NCERT textbooks (ChromaDB) to anchor the AI to the official curriculum.
+- 🤖 **Multi-Agent Vetting:** A multi-step LangGraph workflow drafts raw questions, and a secondary agent rigorously filters out questions that violate topology or difficulty constraints.
+- ⚡ **Real-time SSE Streaming:** As the AI pipeline runs, Server-Sent Events stream the node-by-node progress back to the Next.js frontend in real-time.
+- 📂 **History & Library:** All generated papers are persisted in MongoDB and beautifully rendered on the web.
+
+---
+
+## 🏗 System Architecture
+
+The project consists of a highly scalable and decoupled architecture:
+
+```mermaid
+graph TD
+    User([Educator]) -->|Interacts| UI[Next.js Frontend]
+    UI -->|API & SSE stream| Backend[FastAPI Backend]
+    
+    Backend -->|Checkpointing| PG[(PostgreSQL)]
+    Backend -->|Persists Papers| Mongo[(MongoDB)]
+    
+    subgraph AI Agent Workflow (LangGraph)
+        Backend --> Agent[LangGraph Orchestrator]
+        Agent -->|RAG| Chroma[(ChromaDB Vector Store)]
+        Agent -->|Inference| LLM[OpenAI GPT-4o]
+        
+        Agent --> N1[Retrieve Context]
+        N1 --> N2[Draft Questions]
+        N2 --> N3[Validate & Vet]
+        N3 --> N4[Format Paper]
+    end
 ```
-FastAPI Server → LangGraph Graph → Gemini LLM
-                     ↓
-              RAG Pipeline (Chroma)
-                     ↓
-              MongoDB (paper storage)
-              PostgreSQL (LangGraph checkpointing)
-```
 
-## LangGraph Nodes
+### 🔹 Component Breakdown
+1. **Frontend (Client):** Located in the `frontend` submodule. Built with **Next.js**, React, Tailwind CSS, and TypeScript.
+2. **Backend (Agent):** The core API built with **FastAPI** (Python).
+3. **Orchestrator:** **LangGraph** manages the stateful agent workflow.
+4. **Storage:**
+   - **MongoDB** for document storage (exam papers, metadata).
+   - **PostgreSQL** for LangGraph thread checkpointing (Time-travel and persistence).
+   - **ChromaDB** for vector storage (Retrieval-Augmented Generation).
 
-| Node | Description |
-|------|-------------|
-| `ingest_documents` | Downloads PDFs/TXT from Vercel Blob, chunks them |
-| `retrieve_context` | Semantic search over chunks using embeddings |
-| `generate_questions` | LLM generates all question types |
-| `validate_questions` | Self-critique quality check |
-| `format_paper` | Assembles structured exam paper |
+---
 
-## Setup
+## 🧠 The LangGraph Agent Workflow
 
-### Prerequisites
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
-- PostgreSQL 14+
-- MongoDB 6+
+1. **Retrieve Context:** Extracts curriculum constraints and pulls the relevant NCERT textbook chunks from ChromaDB.
+2. **Generate Draft:** The primary LLM drafts a surplus of raw questions targeting the retrieved syllabus.
+3. **Validate (Vetting):** A secondary strict agent acts as a reviewer, filtering out questions that are irrelevant, hallucinated, or violate the requested CBSE difficulty/mark constraints.
+4. **Format Paper:** Assembles the vetted questions into structured sections (Section A, B, C, D) and outputs the final structured JSON.
 
-### 1. Install uv
+---
+
+## 🚀 Getting Started (Local Development)
+
+### 1. Backend Setup (This Repository)
+
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+# Clone this repository and init the submodule
+git clone --recurse-submodules <YOUR_REPO_URL>
+cd exam-generator-agent
 
-### 2. Install dependencies
-```bash
+# Install dependencies using uv
 uv sync
-```
 
-### 3. Configure environment
-```bash
+# Setup Environment Variables
 cp .env.example .env
-# Edit .env with your API keys
-```
+# Fill in your OPENAI_API_KEY, Postgres URL, and MongoDB URL
 
-### 4. Run with Docker Compose (easiest)
-```bash
-docker-compose up
-```
-
-### 5. Or run locally
-```bash
-# Start Postgres and MongoDB first, then:
+# Run the FastAPI server
 uv run python main.py
 ```
 
-## API Endpoints
+### 2. Frontend Setup (Next.js Submodule)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/generate` | Start exam generation |
-| `GET` | `/stream/{run_id}` | SSE stream of progress |
-| `GET` | `/paper/{run_id}` | Get generated paper |
-| `GET` | `/papers` | List history |
-| `POST` | `/upload-metadata` | Save upload metadata |
-| `GET` | `/health` | Health check |
+The frontend Next.js application is linked as a Git Submodule in the `frontend` folder.
 
-## Environment Variables
+```bash
+cd frontend
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_API_KEY` | Google AI Studio API key |
-| `POSTGRES_URL` | PostgreSQL connection string |
-| `MONGODB_URL` | MongoDB connection string |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token |
+# Install dependencies
+npm install
+
+# Setup Environment Variables
+cp .env.local.example .env.local
+# Ensure NEXT_PUBLIC_AGENT_URL points to the FastAPI backend
+
+# Run the development server
+npm run dev
+```
+
+---
+
+<div align="center">
+  <p>Built with ❤️ for Educators.</p>
+</div>
