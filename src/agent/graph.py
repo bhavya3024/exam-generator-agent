@@ -291,9 +291,9 @@ async def generate_questions(state: AgentState) -> dict:
     llm = get_llm(temperature=0.8)
 
     prompt = build_generation_prompt(config, context)
+    # Merge system prompt into human prompt for Gemma/NIM compatibility
     messages = [
-        SystemMessage(content=QUESTION_GENERATION_SYSTEM_PROMPT),
-        HumanMessage(content=prompt),
+        HumanMessage(content=f"System Instructions:\n{QUESTION_GENERATION_SYSTEM_PROMPT}\n\nUser Request:\n{prompt}"),
     ]
 
     try:
