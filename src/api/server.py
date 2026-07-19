@@ -276,7 +276,7 @@ async def stream(run_id: str):
     """SSE endpoint — stream agent progress events for a run."""
     async def event_generator() -> AsyncGenerator[dict, None]:
         sent_count = 0
-        max_wait = 300  # 5 minutes timeout
+        max_wait = 900  # 15 minutes timeout
         waited = 0
 
         while waited < max_wait:
