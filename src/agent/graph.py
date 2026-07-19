@@ -14,7 +14,9 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import Chroma
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_community.callbacks import get_openai_callback
+from langchain_core.vectorstores import InMemoryVectorStore
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.postgres import PostgresSaver
 
@@ -218,26 +220,22 @@ async def retrieve_context(state: AgentState) -> dict:
     except Exception as e:
         print(f"Warning: Neo4j Graph Retrieval failed: {e}")
 
-    # 2. Chroma Vector Retrieval
+    # 2. InMemory Vector Retrieval
     try:
         if run_id:
-            await asyncio.to_thread(update_paper_progress, run_id, 50, "Performing Semantic Vector Search via ChromaDB...")
+            await asyncio.to_thread(update_paper_progress, run_id, 50, "Performing Semantic Vector Search...")
             
         embeddings = get_embeddings()
-        # Use in-memory Chroma (no persistence needed per run)
+        # Use lightweight in-memory vector store to prevent Heroku R14 Memory OOM
         vectorstore = await asyncio.to_thread(
-            Chroma.from_texts,
+            InMemoryVectorStore.from_texts,
             texts=chunks,
             embedding=embeddings,
-            collection_name=f"run_{state['run_id'].replace('-', '_')}",
         )
         retriever = vectorstore.as_retriever(search_kwargs={"k": 8})
         relevant_docs = await asyncio.to_thread(retriever.invoke, query)
         vector_context = "\n\n---\n\n".join([d.page_content for d in relevant_docs])
         context_parts.append(f"VECTOR SEARCH CONTEXT:\n{vector_context}")
-
-        # Cleanup
-        await asyncio.to_thread(vectorstore.delete_collection)
 
     except Exception as e:
         print(f"Warning: Vector retrieval failed ({e}), using raw chunks")
@@ -247,6 +245,7 @@ async def retrieve_context(state: AgentState) -> dict:
 
     return {
         "retrieved_context": final_context,
+        "document_chunks": [], # Clear chunks from state to free up Heroku RAM (prevent R14 limit)
         "status": "generating",
         "progress": 52,
     }
