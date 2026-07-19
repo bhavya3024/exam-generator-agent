@@ -42,7 +42,7 @@ graph TD
     Backend -->|Checkpointing| PG[(PostgreSQL)]
     Backend -->|Persists Papers| Mongo[(MongoDB)]
     
-    subgraph AI Agent Workflow (LangGraph)
+    subgraph AI_Agent_Workflow [AI Agent Workflow]
         Backend --> Agent[LangGraph Orchestrator]
         Agent -->|RAG| Chroma[(ChromaDB Vector Store)]
         Agent -->|Inference| LLM[OpenAI GPT-4o]
