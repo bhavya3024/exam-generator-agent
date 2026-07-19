@@ -286,6 +286,7 @@ async def stream(run_id: str):
                 event = events[sent_count]
                 yield {"event": event["type"], "data": json.dumps(event["data"])}
                 sent_count += 1
+                waited = 0  # Reset idle timeout on activity
 
                 # Stop streaming on terminal events
                 if event["type"] in ("complete", "agent_error"):
@@ -297,7 +298,7 @@ async def stream(run_id: str):
             await asyncio.sleep(0.5)
             waited += 0.5
 
-        yield {"event": "error", "data": json.dumps({"message": "Timeout waiting for agent"})}
+        yield {"event": "agent_error", "data": json.dumps({"message": "Timeout waiting for agent"})}
 
     return EventSourceResponse(event_generator(), ping=15)
 
