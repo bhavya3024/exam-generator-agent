@@ -52,6 +52,7 @@ def get_embeddings() -> OpenAIEmbeddings:
     kwargs = {
         "model": "text-embedding-3-small",
         "api_key": settings.openai_api_key,
+        "max_retries": 0, # Prevent long exponential backoff hangs if provider doesn't support embeddings
     }
     if settings.openai_base_url:
         kwargs["base_url"] = settings.openai_base_url
@@ -79,15 +80,26 @@ def _parse_pdf_sync(content: bytes, splitter: RecursiveCharacterTextSplitter) ->
     """Helper running synchronously in a background thread to avoid event loop blocking."""
     import tempfile
     import os
+    import gc
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
+    
+    # We no longer need the raw content bytes in memory
+    del content
+    gc.collect()
+
     try:
         loader = PyPDFLoader(tmp_path)
         docs = loader.load()
         chunks = []
         for doc in docs:
             chunks.extend(splitter.split_text(doc.page_content))
+            
+        del docs
+        del loader
+        gc.collect()
+        
         return chunks
     finally:
         try:
@@ -142,12 +154,20 @@ async def ingest_documents(state: AgentState) -> dict:
                 if "pdf" in content_type or url.lower().endswith(".pdf"):
                     # Load PDF using PyPDFLoader inside a background worker thread
                     chunks = await asyncio.to_thread(_parse_pdf_sync, response.content, splitter)
-                    all_chunks.extend(chunks)
+                    # Limit the total number of chunks to prevent memory explosion later
+                    if len(all_chunks) < 1500:
+                        all_chunks.extend(chunks)
                 else:
                     # Plain text
                     text = response.text
                     chunks = splitter.split_text(text)
-                    all_chunks.extend(chunks)
+                    if len(all_chunks) < 1500:
+                        all_chunks.extend(chunks)
+                
+                # Delete response to free memory immediately
+                del response
+                import gc
+                gc.collect()
 
             except Exception as e:
                 print(f"Warning: Failed to load document {url}: {e}")
