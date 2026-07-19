@@ -216,29 +216,7 @@ async def retrieve_context(state: AgentState) -> dict:
 
     context_parts = []
 
-    # 1. Neo4j Graph Retrieval
-    try:
-        from src.db.neo4j import get_neo4j_graph
-        graph = get_neo4j_graph()
-        if graph:
-            from langchain.chains import GraphCypherQAChain
-            if run_id:
-                await asyncio.to_thread(update_paper_progress, run_id, 45, "Querying Neo4j Knowledge Graph for syllabus relationships...")
-            
-            llm = get_llm(temperature=0)
-            chain = GraphCypherQAChain.from_llm(
-                graph=graph, 
-                llm=llm, 
-                verbose=True,
-                allow_dangerous_requests=True
-            )
-            # Ask the graph about the rules for this subject/topic
-            graph_query = f"What are the specific guidelines, formats, and relationships for {subject} and {topic}?"
-            graph_res = await asyncio.to_thread(chain.invoke, {"query": graph_query})
-            if graph_res and graph_res.get("result"):
-                context_parts.append(f"KNOWLEDGE GRAPH RULES:\n{graph_res['result']}\n")
-    except Exception as e:
-        print(f"Warning: Neo4j Graph Retrieval failed: {e}")
+    # 1. Neo4j Graph Retrieval removed as requested by the user.
 
     # 2. InMemory Vector Retrieval
     try:
@@ -390,7 +368,7 @@ async def generate_questions(state: AgentState) -> dict:
 
     except Exception as e:
         print(f"Generation error: {e}")
-        questions = []
+        raise e
 
     return {
         "draft_questions": questions,

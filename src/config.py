@@ -32,10 +32,7 @@ class Settings(BaseSettings):
         env="CORS_ORIGINS",
     )
 
-    # Neo4j GraphRAG
-    neo4j_uri: str = Field(default="bolt://localhost:7687", env="NEO4J_URI")
-    neo4j_username: str = Field(default="neo4j", env="NEO4J_USERNAME")
-    neo4j_password: str = Field(default="password", env="NEO4J_PASSWORD")
+    # Neo4j GraphRAG configurations removed
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
