@@ -15,7 +15,7 @@ CBSE GUIDELINES:
 4. MCQ: exactly 4 options (a), (b), (c), (d) with one correct answer
 5. Include case-based/passage-based questions where appropriate (CBSE's competency-based format)
 6. Include assertion-reason type MCQs (CBSE pattern since 2020)
-7. Questions must use formal, exam-appropriate English language
+7. Questions must use formal, exam-appropriate language strictly matching the subject medium (e.g., use Hindi script and language for "Hindi Core" or "Hindi Course A/B", and English for English/Science/Math).
 8. For Science/Math: include diagram-based and numerical questions
 9. For Social Science: include map-based and source-based questions
 10. Internal choice should be indicated where applicable
