@@ -45,7 +45,7 @@ graph TD
     subgraph AI Agent Workflow (LangGraph)
         Backend --> Agent[LangGraph Orchestrator]
         Agent -->|RAG| Chroma[(ChromaDB Vector Store)]
-        Agent -->|Inference| LLM[OpenAI GPT-4o]
+        Agent -->|Inference| LLM[Google Gemini 1.5 Pro]
         
         Agent --> N1[Retrieve Context]
         N1 --> N2[Draft Questions]
@@ -61,7 +61,7 @@ graph TD
 4. **Storage:**
    - **MongoDB** for document storage (exam papers, metadata).
    - **PostgreSQL** for LangGraph thread checkpointing (Time-travel and persistence).
-   - **ChromaDB** for vector storage (Retrieval-Augmented Generation).
+   - **ChromaDB** for vector storage (Retrieval-Augmented Generation using Google Generative AI Embeddings).
 
 ---
 
@@ -88,7 +88,7 @@ uv sync
 
 # Setup Environment Variables
 cp .env.example .env
-# Fill in your OPENAI_API_KEY, Postgres URL, and MongoDB URL
+# Fill in your GOOGLE_API_KEY, Postgres URL, and MongoDB URL
 
 # Run the FastAPI server
 uv run python main.py
